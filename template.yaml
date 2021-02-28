@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Function is called for each new object in a bucket. It detects images and tries to recognize car license plates.
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 20
+
+Resources:
+  TrafficGuardFramesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: traffic-guard-frames
+  PlatesRecognizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: PlatesRecognizerFunction
+      Handler: den.tal.traffic.guard.PlatesRecognizer::handleRequest
+      Runtime: java11
+      Description: Lambda recognizes car license plates
+      MemorySize: 512
+      Tracing: Active
+      Events:
+        s3Notification:
+          Type: S3
+          Properties:
+            Bucket: !Ref TrafficGuardFramesBucket
+            Events: s3:ObjectCreated:*
+#            Filter:
+#              S3Key:
+#                Rules:
+#                  - Name: prefix
+#                    Value: inbound/

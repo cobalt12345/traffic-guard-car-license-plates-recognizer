@@ -1,0 +1,46 @@
+{
+  "records": [
+    {
+      "awsRegion": "eu-central-1",
+      "eventName": "ObjectCreated:Put",
+      "eventSource": "aws:s3",
+      "eventTime": {
+        "iMillis": 1614535429620,
+        "iChronology": {
+          "iBase": {
+            "iMinDaysInFirstWeek": 4
+          }
+        }
+      },
+      "eventVersion": "2.1",
+      "requestParameters": {
+        "sourceIPAddress": "77.45.169.197"
+      },
+      "responseElements": {
+        "xAmzId2": "7qwFNgYC4vI9ZuBh6yWc4r17y7LHfDQDGM0cBLIFjuCz4qIMnwjq7V4u/3AG5jxyiW7TmkmJxkP3QP5ZlZ241vCnDsWPVq1B",
+        "xAmzRequestId": "4D311D5AAE716239"
+      },
+      "s3": {
+        "configurationId": "f6e1e682-2823-47f2-892b-58ea19633d3a",
+        "bucket": {
+          "name": "traffic-guard-frames",
+          "ownerIdentity": {
+            "principalId": "A4P4B48SH2ZH7"
+          },
+          "arn": "arn:aws:s3:::traffic-guard-frames"
+        },
+        "object": {
+          "key": "1af8be9b-7417-449c-8ada-bccfeac98484.jpg",
+          "size": 27061,
+          "eTag": "8d390f203f84fe6682bd50fdc1202f3f",
+          "versionId": "",
+          "sequencer": "00603BDB0BB2324184"
+        },
+        "s3SchemaVersion": "1.0"
+      },
+      "userIdentity": {
+        "principalId": "AWS:AIDAW2W76X6J7OEPEBHYZ"
+      }
+    }
+  ]
+}
