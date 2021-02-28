@@ -16,6 +16,9 @@ Resources:
   PlatesRecognizerFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Policies:
+        - AmazonRekognitionReadOnlyAccess
+        - AmazonS3ReadOnlyAccess
       CodeUri: PlatesRecognizerFunction
       Handler: den.tal.traffic.guard.PlatesRecognizer::handleRequest
       Runtime: java11
@@ -28,8 +31,8 @@ Resources:
           Properties:
             Bucket: !Ref TrafficGuardFramesBucket
             Events: s3:ObjectCreated:*
-#            Filter:
-#              S3Key:
-#                Rules:
-#                  - Name: prefix
-#                    Value: inbound/
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: jpg

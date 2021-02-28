@@ -8,12 +8,18 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Arrays;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 @Slf4j
 public class PlatesRecognizerTest {
+
+    private PlatesRecognizer platesRecognizer = new PlatesRecognizer();
 
     private class TestContext implements Context {
         @Override
@@ -72,10 +78,10 @@ public class PlatesRecognizerTest {
         }
     }
 
+    @Ignore("Current test is just an example.")
     @Test
     public void handleRequestTest() {
-        var platesRecognizer = new PlatesRecognizer();
-        var s3Event = new S3Event(Arrays.asList(new S3EventNotification.S3EventNotificationRecord(
+        S3Event s3Event = new S3Event(Arrays.asList(new S3EventNotification.S3EventNotificationRecord(
                 Regions.EU_CENTRAL_1.getName(),
                 "ObjectCreated:Put",
                 "aws:s3",
@@ -98,7 +104,19 @@ public class PlatesRecognizerTest {
                 new S3EventNotification.UserIdentityEntity("AWS:AIDAW2W76X6J7OEPEBHYZ")
         )));
 
-        var result = platesRecognizer.handleRequest(s3Event, new TestContext());
+        String result = platesRecognizer.handleRequest(s3Event, new TestContext());
         log.info("Handle request result: {}", result);
+    }
+
+    @Test
+    public void doesTextLookLikeCarLicensePlateNumberTest() {
+        String carNumberEn = "E642YN36";
+        String carNumberRus = "о951ХУ36";
+
+        assertTrue(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(carNumberEn));
+        assertFalse(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(carNumberRus));
+
+        String weddingPlate = "свадьба";
+        assertFalse(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(weddingPlate));
     }
 }
