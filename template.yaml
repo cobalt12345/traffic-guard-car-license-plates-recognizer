@@ -13,12 +13,17 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       BucketName: traffic-guard-frames
+  TrafficGuardCarsAndPlates:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: traffic-guard-cars-and-plates
   PlatesRecognizerFunction:
     Type: AWS::Serverless::Function
     Properties:
       Policies:
         - AmazonRekognitionReadOnlyAccess
-        - AmazonS3ReadOnlyAccess
+        - AmazonS3FullAccess
       CodeUri: PlatesRecognizerFunction
       Handler: den.tal.traffic.guard.PlatesRecognizer::handleRequest
       Runtime: java11
