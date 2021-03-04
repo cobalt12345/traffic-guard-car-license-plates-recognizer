@@ -1,4 +1,4 @@
-package den.tal.traffic.guard;
+package den.tal.traffic.guard; 
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -7,15 +7,19 @@ import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotificatio
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.*;
+import com.amazonaws.services.rekognition.model.Image;
+import com.amazonaws.services.rekognition.model.Point;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -60,19 +64,17 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
             for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
                 BoundingBox boundingBox = detectedCarLicensePlateNumber.getGeometry().getBoundingBox();
                 List<Point> platePolygon = detectedCarLicensePlateNumber.getGeometry().getPolygon();
-                getCarFromImage(bucket, key, detectedCarLicensePlateNumber, platePolygon);
+                getCarFromImage(bucket, key, detectedCarLicensePlateNumber);
             }
 
             return "Ok";
         }
     }
 
-    private void getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber,
-                                 List<Point> platePolygon) {
+    private void getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber) {
 
-        log.debug("Car license plate number: {}. Bounding box: {}", detectedCarLicensePlateNumber,
-                platePolygon);
-
+        log.debug("Car license plate number: {}.", detectedCarLicensePlateNumber);
+        List<Point> platePolygon = detectedCarLicensePlateNumber.getGeometry().getPolygon();
         try (com.amazonaws.services.s3.model.S3Object detectedFrame =
                      s3Client.getObject(new GetObjectRequest(bucket, objectKey));
                         InputStream detectedFrameIs = detectedFrame.getObjectContent()) {
@@ -95,11 +97,11 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
 
             BufferedImage carPlate = detectedFrameImage.getSubimage(plateLeft, plateTop, plateWidth, plateHeight);
             try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
-                ImageIO.write(carPlate, "jpg", os);
+                ImageIO.write(carPlate, Params.FORMAT_NAME.toString(), os);
                 try (ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray())) {
                     ObjectMetadata meta = new ObjectMetadata();
                     meta.setContentLength(os.size());
-                    meta.setContentType("image/jpeg");
+                    meta.setContentType(Params.CONTENT_TYPE.toString());
                     String[] pathParts = objectKey.split("/");
                     String carPlateImageKey = detectedCarLicensePlateNumber.getDetectedText() + "/" +
                             pathParts[pathParts.length - 1];
