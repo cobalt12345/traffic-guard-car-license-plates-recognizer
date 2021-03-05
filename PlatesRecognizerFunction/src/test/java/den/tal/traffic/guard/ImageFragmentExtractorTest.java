@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 @Slf4j
 public class ImageFragmentExtractorTest {
 
-    private static final int SCALE = 1;
+    private static final float SCALE = 4;
     private static final File SOURCE_IMAGE = new File("src/test/resources/IMG_3027.jpg");
     private static final File TARGET_FOLDER = new File("build");
     private BufferedImage sourceImage;
@@ -82,7 +82,7 @@ public class ImageFragmentExtractorTest {
         assertEquals("Source image file name must have an extension!", splittedSourceImageFileName.length, 2);
 
         final File targetImageFile = new File(splittedSourceImageFileName[0]
-                .concat(fileNameSuffix).concat(Integer.toString(SCALE)).concat(".")
+                .concat(fileNameSuffix).concat(Float.toString(SCALE)).concat(".")
                     .concat(splittedSourceImageFileName[1]));
 
         targetImageFile.delete();
