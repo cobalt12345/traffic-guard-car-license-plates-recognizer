@@ -9,6 +9,7 @@ import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.*;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.DeleteObjectRequest;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.gson.Gson;
@@ -32,11 +33,11 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
-    private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}\\d{1,4}$";
+    private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,4}(\\.)*$";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
     private int scale = 5;
     private String destinationBucket = "traffic-guard-cars-and-plates";
-    private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(1);
+    private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
 
     @Override
     public String handleRequest(S3Event s3Event, Context context) {
@@ -65,6 +66,9 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
             for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
                 getCarFromImage(bucket, key, detectedCarLicensePlateNumber);
             }
+
+            log.debug("Now remove uploaded image '{}'. From bucket '{}'.", key, bucket);
+            s3Client.deleteObject(new DeleteObjectRequest(bucket, key));
 
             return "Ok";
         }

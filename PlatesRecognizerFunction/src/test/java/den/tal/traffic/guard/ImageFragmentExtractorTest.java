@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 @Slf4j
 public class ImageFragmentExtractorTest {
 
-    private static final float SCALE = 4;
+    private static final float SCALE = 6f;
     private static final File SOURCE_IMAGE = new File("src/test/resources/IMG_3027.jpg");
     private static final File TARGET_FOLDER = new File("build");
     private BufferedImage sourceImage;
