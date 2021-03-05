@@ -112,11 +112,10 @@ public class PlatesRecognizerTest {
     public void doesTextLookLikeCarLicensePlateNumberTest() {
         String carNumberEn = "E642YN36";
         String carNumberRus = "о951ХУ36";
-
         assertTrue(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(carNumberEn));
         assertFalse(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(carNumberRus));
 
-        String weddingPlate = "свадьба";
+        String weddingPlate = "wedding";
         assertFalse(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(weddingPlate));
     }
 }

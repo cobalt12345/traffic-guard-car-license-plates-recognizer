@@ -1,4 +1,4 @@
-package den.tal.traffic.guard; 
+package den.tal.traffic.guard;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -7,8 +7,6 @@ import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotificatio
 import com.amazonaws.services.rekognition.AmazonRekognition;
 import com.amazonaws.services.rekognition.AmazonRekognitionClientBuilder;
 import com.amazonaws.services.rekognition.model.*;
-import com.amazonaws.services.rekognition.model.Image;
-import com.amazonaws.services.rekognition.model.Point;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
@@ -19,7 +17,6 @@ import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,6 +36,7 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
     private int scale = 5;
     private String destinationBucket = "traffic-guard-cars-and-plates";
+    private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(1);
 
     @Override
     public String handleRequest(S3Event s3Event, Context context) {
@@ -59,11 +57,12 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
             List<TextDetection> detectedCarLicensePlateNumbers =
                     rekognitionClient.detectText(textDetectionRequest).getTextDetections().parallelStream()
                         .filter(textDetection -> doesTextLookLikeCarLicensePlateNumber(
-                                textDetection.getDetectedText().trim())).collect(Collectors.toList());
+                                textDetection.getDetectedText().trim()))
+                                    .filter(textDetection ->
+                                            TextTypes.fromValue(textDetection.getType()) == TextTypes.LINE)
+                                                .collect(Collectors.toList());
 
             for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
-                BoundingBox boundingBox = detectedCarLicensePlateNumber.getGeometry().getBoundingBox();
-                List<Point> platePolygon = detectedCarLicensePlateNumber.getGeometry().getPolygon();
                 getCarFromImage(bucket, key, detectedCarLicensePlateNumber);
             }
 
@@ -72,30 +71,15 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     }
 
     private void getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber) {
-
-        log.debug("Car license plate number: {}.", detectedCarLicensePlateNumber);
-        List<Point> platePolygon = detectedCarLicensePlateNumber.getGeometry().getPolygon();
+        log.debug("Car license plate number (json): {}.", gson.toJson(detectedCarLicensePlateNumber));
         try (com.amazonaws.services.s3.model.S3Object detectedFrame =
                      s3Client.getObject(new GetObjectRequest(bucket, objectKey));
                         InputStream detectedFrameIs = detectedFrame.getObjectContent()) {
 
             BufferedImage detectedFrameImage = ImageIO.read(detectedFrameIs);
-            int detectedFrameImageWidth = detectedFrameImage.getWidth();
-            int detectedFrameImageHeight = detectedFrameImage.getHeight();
+            BufferedImage carPlate = imageFragmentExtractor.extractFragment(detectedCarLicensePlateNumber.getGeometry()
+                    .getBoundingBox(), detectedFrameImage);
 
-//            int plateLeft = (int) (detectedFrameImageWidth * boundingBox.getLeft().floatValue());
-//            int plateTop = (int) (detectedFrameImageHeight * boundingBox.getTop().floatValue());
-//            int plateWidth = (int) (detectedFrameImageWidth * boundingBox.getWidth());
-//            int plateHeight = (int) (detectedFrameImageHeight * boundingBox.getHeight());
-            int plateLeft = (int) (platePolygon.get(3).getX().floatValue() * detectedFrameImageWidth);
-            int plateTop = (int) (platePolygon.get(3).getY().floatValue() * detectedFrameImageHeight);
-            int plateWidth = (int) (detectedFrameImageWidth * (platePolygon.get(1).getX().floatValue()
-                - platePolygon.get(3).getX().floatValue()));
-
-            int plateHeight = (int) (detectedFrameImageHeight * (platePolygon.get(1).getY().floatValue()
-                - platePolygon.get(3).getY().floatValue()));
-
-            BufferedImage carPlate = detectedFrameImage.getSubimage(plateLeft, plateTop, plateWidth, plateHeight);
             try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
                 ImageIO.write(carPlate, Params.FORMAT_NAME.toString(), os);
                 try (ByteArrayInputStream is = new ByteArrayInputStream(os.toByteArray())) {
