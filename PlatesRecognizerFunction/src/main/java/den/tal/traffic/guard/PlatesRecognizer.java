@@ -35,7 +35,7 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
     private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,4}(\\.)*$";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
-    private int scale = 5;
+    private float scale = 6f;
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
 
