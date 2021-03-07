@@ -35,7 +35,7 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
     private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,4}(\\.)*$";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
-    private float scale = 6f;
+    private float scale = 20.0f;
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
 
@@ -59,8 +59,8 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                     rekognitionClient.detectText(textDetectionRequest).getTextDetections().parallelStream()
                         .filter(textDetection -> doesTextLookLikeCarLicensePlateNumber(
                                 textDetection.getDetectedText().trim()))
-                                    .filter(textDetection ->
-                                            TextTypes.fromValue(textDetection.getType()) == TextTypes.LINE)
+//                                    .filter(textDetection ->
+//                                            TextTypes.fromValue(textDetection.getType()) == TextTypes.LINE)
                                                 .collect(Collectors.toList());
 
             for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
