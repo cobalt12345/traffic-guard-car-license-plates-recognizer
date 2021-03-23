@@ -6,24 +6,70 @@ Description: Function is called for each new object in a bucket. It detects imag
 Globals:
   Function:
     Timeout: 20
+Parameters:
+  SourceImagesBucketName:
+    Description: Recognize function takes images from source bucket and parses them.
+    Type: String
+    Default: 'traffic-guard-frames'
+  TargetImagesBucketName:
+    Description: Recognize function does the recognition and stores the image into the target bucket.
+    Type: String
+    Default: 'traffic-guard-cars-and-plates'
+  TrafficGuardParsedCarLicensePlatesTableName:
+    Description: Recognize function stores its state in the specified DynamoDB table.
+    Type: String
+    Default: 'TrafficGuardParsedCarLicensePlates'
 
 Resources:
   TrafficGuardFramesBucket:
-    Type: AWS::S3::Bucket
+    Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
-      BucketName: traffic-guard-frames
+      BucketName: !Ref SourceImagesBucketName
   TrafficGuardCarsAndPlates:
-    Type: AWS::S3::Bucket
+    Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
-      BucketName: traffic-guard-cars-and-plates
+      BucketName: !Ref TargetImagesBucketName
+  TrafficGuardParsedCarLicensePlatesTable:
+    Type: 'AWS::DynamoDB::Table'
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Ref TrafficGuardParsedCarLicensePlatesTableName
+      AttributeDefinitions:
+        - AttributeName: 'car_license_plate_number'
+          AttributeType: S
+        - AttributeName: 'parsed_timestamp'
+          AttributeType: N
+        - AttributeName: 'object_key_in_bucket'
+          AttributeType: S
+      KeySchema:
+        - AttributeName: 'car_license_plate_number'
+          KeyType: 'HASH'
+        - AttributeName: 'parsed_timestamp'
+          KeyType: 'RANGE'
+      GlobalSecondaryIndexes:
+        -
+          IndexName: 'ObjectKeyInBucketGSI'
+          KeySchema:
+            -
+              AttributeName: 'object_key_in_bucket'
+              KeyType: 'HASH'
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 2
+            WriteCapacityUnits: 2
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
   PlatesRecognizerFunction:
     Type: AWS::Serverless::Function
     Properties:
       Policies:
         - AmazonRekognitionReadOnlyAccess
         - AmazonS3FullAccess
+        - AmazonDynamoDBFullAccess
       CodeUri: PlatesRecognizerFunction
       Handler: den.tal.traffic.guard.PlatesRecognizer::handleRequest
       Runtime: java11

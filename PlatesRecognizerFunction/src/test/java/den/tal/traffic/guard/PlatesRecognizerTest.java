@@ -7,6 +7,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
+import com.amazonaws.services.rekognition.model.TextDetection;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -15,6 +16,7 @@ import java.util.Arrays;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 @Slf4j
 public class PlatesRecognizerTest {
@@ -117,5 +119,13 @@ public class PlatesRecognizerTest {
 
         String weddingPlate = "wedding";
         assertFalse(platesRecognizer.doesTextLookLikeCarLicensePlateNumber(weddingPlate));
+    }
+
+    @Test
+    public void normalizeCarPlateNumberTest() {
+        final String carNumber = "e642yN 36.";
+        final String carNumberNormalized = "E642YN36";
+        assertEquals(carNumberNormalized, platesRecognizer.normalizeCarPlateNumber(new TextDetection()
+                .withDetectedText(carNumber)).getDetectedText());
     }
 }

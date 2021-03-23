@@ -8,3 +8,4 @@ s3_prefix = "TrafficGuard"
 region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
+parameter_overrides = "SourceImagesBucketName=\"traffic-guard-frames\" TargetImagesBucketName=\"traffic-guard-cars-and-plates\""

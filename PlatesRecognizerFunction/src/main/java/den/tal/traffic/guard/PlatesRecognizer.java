@@ -14,6 +14,8 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import den.tal.traffic.guard.db.data.RecognizedPlate;
+import den.tal.traffic.guard.db.services.RecognizedPlatesService;
 import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,11 +36,12 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
-    private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,4}(\\.)*$";
+    private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,3}(\\.)*$";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
     private float scale = 20.0f;
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
+    private RecognizedPlatesService recognizedPlatesService = new RecognizedPlatesService(5, ChronoUnit.MINUTES);
 
     @Override
     public String handleRequest(S3Event s3Event, Context context) {
@@ -64,7 +68,18 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                                                 .collect(Collectors.toList());
 
             for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
-                getCarFromImage(bucket, key, detectedCarLicensePlateNumber);
+                TextDetection detectedCarLicensePlateNumberNormalized =
+                        normalizeCarPlateNumber(detectedCarLicensePlateNumber);
+
+                RecognizedPlate recognizedPlate = RecognizedPlate.builder()
+                        .carLicensePlateNumber(detectedCarLicensePlateNumberNormalized.getDetectedText())
+                            .objectKeyInBucket(key).timestamp(System.currentTimeMillis()).build();
+
+                if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
+
+                    getCarFromImage(bucket, key, detectedCarLicensePlateNumberNormalized);
+                    recognizedPlatesService.saveRecognizedCarLicensePlateNumber(recognizedPlate);
+                }
             }
 
             log.debug("Now remove uploaded image '{}'. From bucket '{}'.", key, bucket);
@@ -109,5 +124,16 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
         log.debug("Text '{}' is a car license plate? {}!", text, isCarLicensePlate ? "YES" : "NO");
 
         return isCarLicensePlate;
+    }
+
+    TextDetection normalizeCarPlateNumber(TextDetection detectedCarLicensePlateNumber) {
+        String carPlateNumberText = detectedCarLicensePlateNumber.getDetectedText();
+        String carPlateNumberTextNormalized = carPlateNumberText.replaceAll("[\\.\\s]", "")
+                .toUpperCase();
+
+        log.debug("Original car plate number: {} Normalizar car plate number: {}", carPlateNumberText,
+                carPlateNumberTextNormalized);
+
+        return detectedCarLicensePlateNumber.clone().withDetectedText(carPlateNumberTextNormalized);
     }
 }
