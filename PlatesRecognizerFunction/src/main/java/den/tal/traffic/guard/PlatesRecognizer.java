@@ -18,6 +18,7 @@ import den.tal.traffic.guard.db.data.RecognizedPlate;
 import den.tal.traffic.guard.db.services.RecognizedPlatesService;
 import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -42,6 +43,11 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
     private RecognizedPlatesService recognizedPlatesService = new RecognizedPlatesService(5, ChronoUnit.MINUTES);
+    private static int lambdaInstanceNum = 0;
+    {
+        log.debug("Created instance #{} of PlatesRecognizer lambda.", ++lambdaInstanceNum);
+        MDC.put("lambdaInstanceNum", Integer.toString(lambdaInstanceNum));
+    }
 
     @Override
     public String handleRequest(S3Event s3Event, Context context) {
