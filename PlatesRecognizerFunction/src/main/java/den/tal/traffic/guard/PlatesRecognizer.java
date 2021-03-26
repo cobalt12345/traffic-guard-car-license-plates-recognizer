@@ -71,10 +71,10 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                 TextDetection detectedCarLicensePlateNumberNormalized =
                         normalizeCarPlateNumber(detectedCarLicensePlateNumber);
 
-                RecognizedPlate recognizedPlate = RecognizedPlate.builder()
-                        .carLicensePlateNumber(detectedCarLicensePlateNumberNormalized.getDetectedText())
-                            .objectKeyInBucket(key).timestamp(System.currentTimeMillis()).build();
-
+                RecognizedPlate recognizedPlate = new RecognizedPlate();
+                recognizedPlate.setCarLicensePlateNumber(detectedCarLicensePlateNumberNormalized.getDetectedText());
+                recognizedPlate.setObjectKeyInBucket(key);
+                recognizedPlate.setTimestamp(System.currentTimeMillis());
                 if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
 
                     getCarFromImage(bucket, key, detectedCarLicensePlateNumberNormalized);
