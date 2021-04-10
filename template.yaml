@@ -41,8 +41,8 @@ Resources:
           AttributeType: S
         - AttributeName: 'parsed_timestamp'
           AttributeType: N
-        - AttributeName: 'parsed_date_time'
-          AttributeType: S
+#        - AttributeName: 'parsed_date_time'
+#          AttributeType: S
         - AttributeName: 'object_key_in_bucket'
           AttributeType: S
       KeySchema:

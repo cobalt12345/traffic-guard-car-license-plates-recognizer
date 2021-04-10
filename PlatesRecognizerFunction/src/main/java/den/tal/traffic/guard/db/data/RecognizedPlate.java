@@ -21,6 +21,7 @@ public class RecognizedPlate {
     private long timestamp = System.currentTimeMillis();
 
     @Getter
+    @Setter
     @DynamoDBAttribute(attributeName = "parsed_date_time")
     private String timeStampHumanReadable = new Date(timestamp).toString();
 
