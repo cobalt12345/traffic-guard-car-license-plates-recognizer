@@ -79,12 +79,17 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
 
                 RecognizedPlate recognizedPlate = new RecognizedPlate();
                 recognizedPlate.setCarLicensePlateNumber(detectedCarLicensePlateNumberNormalized.getDetectedText());
-                recognizedPlate.setObjectKeyInBucket(key);
+//                recognizedPlate.setObjectKeyInBucket(key);
                 recognizedPlate.setTimestamp(System.currentTimeMillis());
                 if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
-
-                    getCarFromImage(bucket, key, detectedCarLicensePlateNumberNormalized);
-                    recognizedPlatesService.saveRecognizedCarLicensePlateNumber(recognizedPlate);
+                    String carPlateImageKey = getCarFromImage(bucket, key, detectedCarLicensePlateNumberNormalized);
+                    if (null != carPlateImageKey) {
+                        log.debug("Car plate images saved with key '{}'.", carPlateImageKey);
+                        recognizedPlate.setObjectKeyInBucket(carPlateImageKey);
+                        recognizedPlatesService.saveRecognizedCarLicensePlateNumber(recognizedPlate);
+                    } else {
+                        log.warn("Car plate images was not saved!");
+                    }
                 }
             }
 
@@ -95,7 +100,7 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
         }
     }
 
-    private void getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber) {
+    private String getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber) {
         log.debug("Car license plate number (json): {}.", gson.toJson(detectedCarLicensePlateNumber));
         try (com.amazonaws.services.s3.model.S3Object detectedFrame =
                      s3Client.getObject(new GetObjectRequest(bucket, objectKey));
@@ -117,11 +122,15 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
 
                     log.debug("Write car plate image to {}", "s3://" + destinationBucket + "/" + carPlateImageKey);
                     s3Client.putObject(destinationBucket, carPlateImageKey, is, meta);
+
+                    return carPlateImageKey;
                 }
             }
         } catch (IOException ioex) {
             log.error(String.format("Couldn't get image '%s' from bucket '%s'", objectKey, bucket), ioex);
         }
+
+        return null;
     }
 
     boolean doesTextLookLikeCarLicensePlateNumber(String text) {
