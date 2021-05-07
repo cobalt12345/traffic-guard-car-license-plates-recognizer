@@ -26,11 +26,13 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       BucketName: !Ref SourceImagesBucketName
+
   TrafficGuardCarsAndPlates:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
       BucketName: !Ref TargetImagesBucketName
+
   TrafficGuardParsedCarLicensePlatesTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: Delete
@@ -65,6 +67,7 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
+
   PlatesRecognizerFunction:
     Type: AWS::Serverless::Function
     Properties:
