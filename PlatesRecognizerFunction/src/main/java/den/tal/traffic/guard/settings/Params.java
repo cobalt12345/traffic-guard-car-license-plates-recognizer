@@ -1,7 +1,5 @@
 package den.tal.traffic.guard.settings;
 
-import lombok.Getter;
-
 public enum Params {
     FORMAT_NAME("jpg"),
     CONTENT_TYPE("image/jpeg");
