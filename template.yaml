@@ -23,19 +23,22 @@ Parameters:
 Resources:
   TrafficGuardFramesBucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       BucketName: !Ref SourceImagesBucketName
 
   TrafficGuardCarsAndPlates:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       BucketName: !Ref TargetImagesBucketName
 
   TrafficGuardParsedCarLicensePlatesTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       TableName: !Ref TrafficGuardParsedCarLicensePlatesTableName
       AttributeDefinitions:
@@ -70,6 +73,8 @@ Resources:
 
   PlatesRecognizerFunction:
     Type: AWS::Serverless::Function
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
     Properties:
       Policies:
         - AmazonRekognitionReadOnlyAccess
@@ -92,3 +97,19 @@ Resources:
                 Rules:
                   - Name: suffix
                     Value: jpg
+
+Outputs:
+  TrafficGuardFramesBucket:
+    Description: "Bucket for source images."
+    Value: !GetAtt TrafficGuardFramesBucket.Arn
+  TrafficGuardCarsAndPlates:
+    Description: "Bucket for images with recognized car license plates."
+    Value: !GetAtt TrafficGuardCarsAndPlates.Arn
+  TrafficGuardParsedCarLicensePlatesTableArn:
+    Description: "ARN of DynamoDB table that contains recognized car license plate numbers."
+    Value: !GetAtt TrafficGuardParsedCarLicensePlatesTable.Arn
+  PlatesRecognizerFunction:
+    Description: >
+      "ARN of function that takes source images and tries to recognize them
+      with AWS Rekognition API"
+    Value: !GetAtt PlatesRecognizerFunction.Arn

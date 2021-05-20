@@ -3,9 +3,9 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "TrafficGuard"
-s3_bucket = "traffic-guard-lambda"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-bnc1lgnamqwf"
 s3_prefix = "TrafficGuard"
 region = "eu-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "SourceImagesBucketName=\"traffic-guard-frames\" TargetImagesBucketName=\"traffic-guard-cars-and-plates\""
+parameter_overrides = "SourceImagesBucketName=\"traffic-guard-frames\" TargetImagesBucketName=\"traffic-guard-cars-and-plates\" TrafficGuardParsedCarLicensePlatesTableName=\"TrafficGuardParsedCarLicensePlates\""

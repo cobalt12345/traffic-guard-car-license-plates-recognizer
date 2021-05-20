@@ -2,6 +2,10 @@ plugins {
     id 'java'
 }
 
+group = 'den.tal'
+sourceCompatibility = 11
+targetCompatibility = 11
+
 repositories {
     mavenCentral()
 }
