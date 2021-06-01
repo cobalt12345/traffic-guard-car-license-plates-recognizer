@@ -7,17 +7,21 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 import com.amazonaws.services.lambda.runtime.events.models.s3.S3EventNotification;
+import com.amazonaws.services.rekognition.model.DetectTextResult;
 import com.amazonaws.services.rekognition.model.TextDetection;
+import com.amazonaws.services.rekognition.model.TextTypes;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Scanner;
+import java.util.regex.Pattern;
+import static org.junit.jupiter.api.Assertions.*;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
-
+@SetEnvironmentVariable(key = "dontRecognizeAgainInMinutes", value = "5")
 @Slf4j
 public class PlatesRecognizerTest {
 
@@ -80,7 +84,7 @@ public class PlatesRecognizerTest {
         }
     }
 
-    @Ignore("Current test is just an example.")
+    @Disabled("Current test is just an example.")
     @Test
     public void handleRequestTest() {
         S3Event s3Event = new S3Event(Arrays.asList(new S3EventNotification.S3EventNotificationRecord(
@@ -101,7 +105,7 @@ public class PlatesRecognizerTest {
                                 "arn:aws:s3:::traffic-guard-frames"),
                         new S3EventNotification.S3ObjectEntity("1af8be9b-7417-449c-8ada-bccfeac98484.jpg",
                                 27061L, "8d390f203f84fe6682bd50fdc1202f3f", "",
-                                "00603BDB0BB2324184"),"1.0"),
+                                "00603BDB0BB2324184"), "1.0"),
 
                 new S3EventNotification.UserIdentityEntity("AWS:AIDAW2W76X6J7OEPEBHYZ")
         )));
@@ -127,5 +131,46 @@ public class PlatesRecognizerTest {
         final String carNumberNormalized = "E642YN36";
         assertEquals(carNumberNormalized, platesRecognizer.normalizeCarPlateNumber(new TextDetection()
                 .withDetectedText(carNumber)).getDetectedText());
+    }
+
+    @Test
+    public void removeInvalidCharactersTest() {
+        final String invalidCharacters = "[^A-Za-z0-9]";
+        final String text = "x 277yp.73";
+        final String result = text.replaceAll(invalidCharacters, "");
+        assertEquals("x277yp73", result);
+
+        final String text1 = "2. .aB8/%^";
+        final String result1 = text1.replaceAll(invalidCharacters, "");
+        assertEquals("2aB8", result1);
+
+    }
+
+    @Test
+    public void concatenateWordsToLineTest() throws IOException {
+        final String carLicensePlatePattern = "[a-zA-z]{1}\\d{3,4}[a-zA-Z]{2}\\d{1,3}";
+        var detectTextResult = new DetectTextResult().withTextDetections(
+                new TextDetection().withType(TextTypes.LINE).withDetectedText("o951"),
+                new TextDetection().withType(TextTypes.LINE).withDetectedText(".xY 13 6"),
+                new TextDetection().withType(TextTypes.WORD).withDetectedText(" E."),
+                new TextDetection().withType(TextTypes.WORD).withDetectedText("6 4 ../2"),
+                new TextDetection().withType(TextTypes.WORD).withDetectedText(" Yh 3&6")
+        );
+        detectTextResult.getTextDetections().stream().forEach(text -> text.setDetectedText(text.getDetectedText()
+                .replaceAll("[^A-Za-z0-9]", "")));
+
+        String wholeDetectResultAsString = detectTextResult.getTextDetections().stream().reduce("",
+                (str, textDetection) -> str + textDetection.getDetectedText(),
+                (strLeft, strRight) -> strLeft + strRight);
+
+        Scanner scanner = new Scanner(wholeDetectResultAsString);
+        Pattern pattern = Pattern.compile(carLicensePlatePattern);
+
+        for (String seems2bCarLicensePlate = scanner.findInLine(pattern);
+             null != seems2bCarLicensePlate;seems2bCarLicensePlate = scanner.findInLine(pattern)) {
+
+            log.debug("Seems to be a car license plate: {}", seems2bCarLicensePlate);
+        }
+
     }
 }

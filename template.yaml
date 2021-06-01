@@ -19,6 +19,18 @@ Parameters:
     Description: Recognize function stores its state in the specified DynamoDB table.
     Type: String
     Default: 'TrafficGuardParsedCarLicensePlates'
+  RemoveProcessedImagesFromSourceBucket:
+    Description: "Processed images can be kept for analysis/debug reasons"
+    Type: String
+    AllowedValues: [true, false]
+    Default: true
+  SaveAlreadyRecognizedAgainInMinutes:
+    Description: "If the same car license plate number is recognized within the specified period, it's not saved."
+    Type: Number
+    Default: 5
+  RekognitionServiceRegion:
+    Type: String
+    Default: eu-central-1
 
 Resources:
   TrafficGuardFramesBucket:
@@ -77,7 +89,7 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       Policies:
-        - AmazonRekognitionReadOnlyAccess
+        - AmazonRekognitionFullAccess
         - AmazonS3FullAccess
         - AmazonDynamoDBFullAccess
       CodeUri: PlatesRecognizerFunction
@@ -86,6 +98,11 @@ Resources:
       Description: Lambda recognizes car license plates
       MemorySize: 512
       Tracing: Active
+      Environment:
+        Variables:
+          deleteSourceImages: !Ref RemoveProcessedImagesFromSourceBucket
+          dontRecognizeAgainInMinutes: !Ref SaveAlreadyRecognizedAgainInMinutes
+          rekognitionServiceRegion: !Ref RekognitionServiceRegion
       Events:
         s3Notification:
           Type: S3

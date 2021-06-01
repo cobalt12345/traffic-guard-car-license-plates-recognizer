@@ -6,8 +6,8 @@ import com.amazonaws.services.rekognition.model.Point;
 import com.amazonaws.services.rekognition.model.TextDetection;
 import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -17,7 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
 public class ImageFragmentExtractorTest {
@@ -29,7 +29,7 @@ public class ImageFragmentExtractorTest {
     private ImageFragmentExtractor fragmentExtractor;
     private TextDetection detectedText;
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException {
         fragmentExtractor = new ImageFragmentExtractor(SCALE);
         sourceImage = ImageIO.read(SOURCE_IMAGE);
@@ -79,7 +79,7 @@ public class ImageFragmentExtractorTest {
 
     private void writeImage(BufferedImage image, String fileNameSuffix) throws IOException {
         String[] splittedSourceImageFileName = SOURCE_IMAGE.getName().split("\\.");
-        assertEquals("Source image file name must have an extension!", splittedSourceImageFileName.length, 2);
+        assertEquals(splittedSourceImageFileName.length, 2);
 
         final File targetImageFile = new File(splittedSourceImageFileName[0]
                 .concat(fileNameSuffix).concat(Float.toString(SCALE)).concat(".")

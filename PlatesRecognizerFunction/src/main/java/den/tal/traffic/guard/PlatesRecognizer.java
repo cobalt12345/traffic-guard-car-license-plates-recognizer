@@ -1,5 +1,6 @@
 package den.tal.traffic.guard;
 
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,18 +37,21 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    private AmazonRekognition rekognitionClient = AmazonRekognitionClientBuilder.defaultClient();
+    private AmazonRekognition rekognitionClient;
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
-    private final String carLicensePlatePattern = "^[a-zA-z]{1}\\d{3}[a-zA-Z]{2}(\\s)*\\d{1,3}(\\.)*$";
+    private final String carLicensePlatePattern = "[a-zA-z]{1}\\d{3,4}[a-zA-Z]{2}\\d{1,3}";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
+    private final String NOT_ALLOWED_CHARACTERS = "[^A-Za-z0-9]";
     private float scale = 20.0f;
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);
-    private RecognizedPlatesService recognizedPlatesService = new RecognizedPlatesService(5, ChronoUnit.MINUTES);
-    private static int lambdaInstanceNum = 0;
-    {
-        log.debug("Created instance #{} of PlatesRecognizer lambda.", ++lambdaInstanceNum);
-        MDC.put("lambdaInstanceNum", Integer.toString(lambdaInstanceNum));
+    private RecognizedPlatesService recognizedPlatesService = new RecognizedPlatesService(
+            Integer.parseInt(System.getenv().get("dontRecognizeAgainInMinutes")), ChronoUnit.MINUTES);
+
+    public PlatesRecognizer() {
+        rekognitionClient = AmazonRekognitionClientBuilder.standard()
+                .withCredentials(DefaultAWSCredentialsProviderChain.getInstance()).withRegion(
+                        System.getenv().get("rekognitionServiceRegion")).build();
     }
 
     @Override
@@ -66,23 +71,30 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                     .withS3Object(new S3Object().withBucket(bucket).withName(key)));
 
             List<TextDetection> detectedCarLicensePlateNumbers =
-                    rekognitionClient.detectText(textDetectionRequest).getTextDetections().parallelStream()
-                        .filter(textDetection -> doesTextLookLikeCarLicensePlateNumber(
-                                textDetection.getDetectedText().trim()))
-//                                    .filter(textDetection ->
-//                                            TextTypes.fromValue(textDetection.getType()) == TextTypes.LINE)
-                                                .collect(Collectors.toList());
+                    rekognitionClient.detectText(textDetectionRequest).getTextDetections();
 
-            for (TextDetection detectedCarLicensePlateNumber : detectedCarLicensePlateNumbers) {
-                TextDetection detectedCarLicensePlateNumberNormalized =
-                        normalizeCarPlateNumber(detectedCarLicensePlateNumber);
+            //Remove invalid symbols from detections and concatenate all words into single line
+            detectedCarLicensePlateNumbers.stream().forEach(text -> text.setDetectedText(text.getDetectedText()
+                    .replaceAll(NOT_ALLOWED_CHARACTERS, "")));
+            //Concatenate all recognized text fragments
+            String wholeDetectResultAsString = detectedCarLicensePlateNumbers.stream().reduce("",
+                    (str, textDetection) -> str + textDetection.getDetectedText(),
+                    (strLeft, strRight) -> strLeft + strRight);
+
+            //Now try to find if the whole fragment contains something looking like car license plate numbers
+            Scanner scanner = new Scanner(wholeDetectResultAsString);
+            for (String seems2bCarLicensePlateNumber = scanner.findInLine(pattern);
+                 null != seems2bCarLicensePlateNumber;seems2bCarLicensePlateNumber = scanner.findInLine(pattern)) {
+
+                log.debug("Seems to be a car license plate number : {}", seems2bCarLicensePlateNumber);
+
 
                 RecognizedPlate recognizedPlate = new RecognizedPlate();
-                recognizedPlate.setCarLicensePlateNumber(detectedCarLicensePlateNumberNormalized.getDetectedText());
+                recognizedPlate.setCarLicensePlateNumber(seems2bCarLicensePlateNumber);
 //                recognizedPlate.setObjectKeyInBucket(key);
                 recognizedPlate.setTimestamp(System.currentTimeMillis());
                 if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
-                    String carPlateImageKey = getCarFromImage(bucket, key, detectedCarLicensePlateNumberNormalized);
+                    String carPlateImageKey = getCarFromImage(bucket, key, recognizedPlate.getCarLicensePlateNumber());
                     if (null != carPlateImageKey) {
                         log.debug("Car plate images saved with key '{}'.", carPlateImageKey);
                         recognizedPlate.setObjectKeyInBucket(carPlateImageKey);
@@ -93,22 +105,27 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                 }
             }
 
-            log.debug("Now remove uploaded image '{}'. From bucket '{}'.", key, bucket);
-            s3Client.deleteObject(new DeleteObjectRequest(bucket, key));
+            if (Boolean.parseBoolean(System.getenv().get("RemoveProcessedImagesFromSourceBucket"))) {
+                log.debug("Now remove uploaded image '{}'. From bucket '{}'.", key, bucket);
+                s3Client.deleteObject(new DeleteObjectRequest(bucket, key));
+            } else {
+                log.debug("Keep image '{}' in bucket '{}' for the following analysis.", key, bucket);
+            }
 
             return "Ok";
         }
     }
 
-    private String getCarFromImage(String bucket, String objectKey, TextDetection detectedCarLicensePlateNumber) {
-        log.debug("Car license plate number (json): {}.", gson.toJson(detectedCarLicensePlateNumber));
+    private String getCarFromImage(String bucket, String objectKey, String detectedCarLicensePlateNumber) {
+        log.debug("Car license plate number: {}.", detectedCarLicensePlateNumber);
         try (com.amazonaws.services.s3.model.S3Object detectedFrame =
                      s3Client.getObject(new GetObjectRequest(bucket, objectKey));
                         InputStream detectedFrameIs = detectedFrame.getObjectContent()) {
 
             BufferedImage detectedFrameImage = ImageIO.read(detectedFrameIs);
-            BufferedImage carPlate = imageFragmentExtractor.extractFragment(detectedCarLicensePlateNumber.getGeometry()
-                    .getBoundingBox(), detectedFrameImage);
+            BufferedImage carPlate = imageFragmentExtractor.extractFragment(
+                    new BoundingBox().withHeight(Float.MAX_VALUE).withWidth(Float.MAX_VALUE)
+                    .withTop(1.0f).withLeft(1.0f), detectedFrameImage);
 
             try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
                 ImageIO.write(carPlate, Params.FORMAT_NAME.toString(), os);
@@ -117,7 +134,7 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                     meta.setContentLength(os.size());
                     meta.setContentType(Params.CONTENT_TYPE.toString());
                     String[] pathParts = objectKey.split("/");
-                    String carPlateImageKey = detectedCarLicensePlateNumber.getDetectedText() + "/" +
+                    String carPlateImageKey = detectedCarLicensePlateNumber + "/" +
                             pathParts[pathParts.length - 1];
 
                     log.debug("Write car plate image to {}", "s3://" + destinationBucket + "/" + carPlateImageKey);
