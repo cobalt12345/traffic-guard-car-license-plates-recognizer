@@ -31,6 +31,11 @@ public class RecognizedPlate {
     @DynamoDBAttribute(attributeName = "object_key_in_bucket")
     private String objectKeyInBucket;
 
+    @Getter
+    @Setter
+    @DynamoDBAttribute(attributeName = "gps_location")
+    private String gpsLocation;
+
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
         timeStampHumanReadable = new Date(timestamp).toString();

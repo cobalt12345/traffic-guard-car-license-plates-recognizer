@@ -19,7 +19,6 @@ import den.tal.traffic.guard.db.data.RecognizedPlate;
 import den.tal.traffic.guard.db.services.RecognizedPlatesService;
 import den.tal.traffic.guard.settings.Params;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -29,10 +28,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class PlatesRecognizer implements RequestHandler<S3Event, String> {
@@ -81,23 +80,19 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                     (str, textDetection) -> str + textDetection.getDetectedText(),
                     (strLeft, strRight) -> strLeft + strRight);
 
+            wholeDetectResultAsString = wholeDetectResultAsString.toUpperCase();
             //Now try to find if the whole fragment contains something looking like car license plate numbers
             Scanner scanner = new Scanner(wholeDetectResultAsString);
             for (String seems2bCarLicensePlateNumber = scanner.findInLine(pattern);
                  null != seems2bCarLicensePlateNumber;seems2bCarLicensePlateNumber = scanner.findInLine(pattern)) {
-
                 log.debug("Seems to be a car license plate number : {}", seems2bCarLicensePlateNumber);
-
-
                 RecognizedPlate recognizedPlate = new RecognizedPlate();
                 recognizedPlate.setCarLicensePlateNumber(seems2bCarLicensePlateNumber);
-//                recognizedPlate.setObjectKeyInBucket(key);
                 recognizedPlate.setTimestamp(System.currentTimeMillis());
                 if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
-                    String carPlateImageKey = getCarFromImage(bucket, key, recognizedPlate.getCarLicensePlateNumber());
-                    if (null != carPlateImageKey) {
-                        log.debug("Car plate images saved with key '{}'.", carPlateImageKey);
-                        recognizedPlate.setObjectKeyInBucket(carPlateImageKey);
+                    getCarFromImage(bucket, key, recognizedPlate);
+                    if (null != recognizedPlate.getObjectKeyInBucket()) {
+                        log.debug("Car plate images saved with key '{}'.", recognizedPlate.getObjectKeyInBucket());
                         recognizedPlatesService.saveRecognizedCarLicensePlateNumber(recognizedPlate);
                     } else {
                         log.warn("Car plate images was not saved!");
@@ -116,7 +111,8 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
         }
     }
 
-    private String getCarFromImage(String bucket, String objectKey, String detectedCarLicensePlateNumber) {
+    private void getCarFromImage(String bucket, String objectKey, RecognizedPlate recognizedPlate) {
+        final String detectedCarLicensePlateNumber = recognizedPlate.getCarLicensePlateNumber();
         log.debug("Car license plate number: {}.", detectedCarLicensePlateNumber);
         try (com.amazonaws.services.s3.model.S3Object detectedFrame =
                      s3Client.getObject(new GetObjectRequest(bucket, objectKey));
@@ -133,21 +129,23 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                     ObjectMetadata meta = new ObjectMetadata();
                     meta.setContentLength(os.size());
                     meta.setContentType(Params.CONTENT_TYPE.toString());
+                    Map<String, String> userMetadata = detectedFrame.getObjectMetadata().getUserMetadata();
+                    meta.setUserMetadata(userMetadata);
+                    if (userMetadata.containsKey("location")) {
+                        recognizedPlate.setGpsLocation(userMetadata.get("location"));
+                    }
                     String[] pathParts = objectKey.split("/");
                     String carPlateImageKey = detectedCarLicensePlateNumber + "/" +
                             pathParts[pathParts.length - 1];
 
+                    recognizedPlate.setObjectKeyInBucket(carPlateImageKey);
                     log.debug("Write car plate image to {}", "s3://" + destinationBucket + "/" + carPlateImageKey);
                     s3Client.putObject(destinationBucket, carPlateImageKey, is, meta);
-
-                    return carPlateImageKey;
                 }
             }
         } catch (IOException ioex) {
             log.error(String.format("Couldn't get image '%s' from bucket '%s'", objectKey, bucket), ioex);
         }
-
-        return null;
     }
 
     boolean doesTextLookLikeCarLicensePlateNumber(String text) {
