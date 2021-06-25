@@ -9,7 +9,9 @@ targetCompatibility = 11
 repositories {
     mavenCentral()
 }
-
+test {
+    useJUnitPlatform()
+}
 dependencies {
     implementation 'com.amazonaws:aws-java-sdk-dynamodb:1.11.960'
     implementation 'com.amazonaws:aws-lambda-java-core:1.2.1'

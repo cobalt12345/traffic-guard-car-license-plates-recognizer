@@ -2,10 +2,10 @@ version = 0.1
 [default]
 [default.deploy]
 [default.deploy.parameters]
-stack_name = "TrafficGuard"
+stack_name = "TrafficGuardPlatesRecognizer"
 s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-bnc1lgnamqwf"
-s3_prefix = "TrafficGuard"
+s3_prefix = "TrafficGuardPlatesRecognizer"
 region = "eu-central-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "SourceImagesBucketName=\"traffic-guard-frames\" TargetImagesBucketName=\"traffic-guard-cars-and-plates\" TrafficGuardParsedCarLicensePlatesTableName=\"TrafficGuardParsedCarLicensePlates\" RemoveProcessedImagesFromSourceBucket=\"false\" SaveAlreadyRecognizedAgainInMinutes=\"5\" RekognitionServiceRegion=\"eu-central-1\""
+parameter_overrides = "SourceImagesBucketName=\"traffic-guard-frames\" TargetImagesBucketName=\"traffic-guard-cars-and-plates\" TrafficGuardParsedCarLicensePlatesTableName=\"TrafficGuardParsedCarLicensePlates-rtguuiavrzekdoumqfjjwmtgce-develope\" CreateTable=\"false\" RemoveProcessedImagesFromSourceBucket=\"false\" SaveAlreadyRecognizedAgainInMinutes=\"5\" RekognitionServiceRegion=\"eu-central-1\""

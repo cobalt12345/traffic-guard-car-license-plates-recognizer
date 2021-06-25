@@ -19,6 +19,8 @@ import java.util.Map;
 public class RecognizedPlatesService {
     private AmazonDynamoDB dynamoDBClient = AmazonDynamoDBClientBuilder.defaultClient();
     private DynamoDBMapperConfig mapperConfig = DynamoDBMapperConfig.builder()
+            .withTableNameOverride(DynamoDBMapperConfig.TableNameOverride.withTableNameReplacement(
+                    System.getenv().get("trafficGuardTableName")))
             .withConsistentReads(DynamoDBMapperConfig.ConsistentReads.CONSISTENT).build();
 
     private DynamoDBMapper mapper = new DynamoDBMapper(dynamoDBClient, mapperConfig);

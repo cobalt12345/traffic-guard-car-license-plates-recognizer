@@ -19,6 +19,11 @@ Parameters:
     Description: Recognize function stores its state in the specified DynamoDB table.
     Type: String
     Default: 'TrafficGuardParsedCarLicensePlates'
+  CreateTable:
+    Description: Indicates whether existing table must be used or a new one created.
+    Type: String
+    AllowedValues: [true, false]
+    Default: true
   RemoveProcessedImagesFromSourceBucket:
     Description: "Processed images can be kept for analysis/debug reasons"
     Type: String
@@ -31,6 +36,9 @@ Parameters:
   RekognitionServiceRegion:
     Type: String
     Default: eu-central-1
+
+Conditions:
+  CreateNewDynamoDBTable: !Equals [!Ref CreateTable, 'true']
 
 Resources:
   TrafficGuardFramesBucket:
@@ -49,6 +57,7 @@ Resources:
 
   TrafficGuardParsedCarLicensePlatesTable:
     Type: 'AWS::DynamoDB::Table'
+    Condition: CreateNewDynamoDBTable
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
@@ -62,6 +71,8 @@ Resources:
 #          AttributeType: S
         - AttributeName: 'object_key_in_bucket'
           AttributeType: S
+        - AttributeName: 'gps_location'
+          AttributeType: S
       KeySchema:
         - AttributeName: 'car_license_plate_number'
           KeyType: 'HASH'
@@ -73,6 +84,17 @@ Resources:
           KeySchema:
             -
               AttributeName: 'object_key_in_bucket'
+              KeyType: 'HASH'
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+        -
+          IndexName: 'GpsLocation'
+          KeySchema:
+            -
+              AttributeName: 'gps_location'
               KeyType: 'HASH'
           Projection:
             ProjectionType: "ALL"
@@ -103,6 +125,7 @@ Resources:
           deleteSourceImages: !Ref RemoveProcessedImagesFromSourceBucket
           dontRecognizeAgainInMinutes: !Ref SaveAlreadyRecognizedAgainInMinutes
           rekognitionServiceRegion: !Ref RekognitionServiceRegion
+          trafficGuardTableName: !Ref TrafficGuardParsedCarLicensePlatesTableName
       Events:
         s3Notification:
           Type: S3
@@ -123,6 +146,7 @@ Outputs:
     Description: "Bucket for images with recognized car license plates."
     Value: !GetAtt TrafficGuardCarsAndPlates.Arn
   TrafficGuardParsedCarLicensePlatesTableArn:
+    Condition: CreateNewDynamoDBTable
     Description: "ARN of DynamoDB table that contains recognized car license plate numbers."
     Value: !GetAtt TrafficGuardParsedCarLicensePlatesTable.Arn
   PlatesRecognizerFunction:

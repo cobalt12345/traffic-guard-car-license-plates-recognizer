@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SetEnvironmentVariable(key = "dontRecognizeAgainInMinutes", value = "5")
+@SetEnvironmentVariable(key = "rekognitionServiceRegion", value = "eu-central-1")
 @Slf4j
 public class PlatesRecognizerTest {
 
@@ -172,5 +173,12 @@ public class PlatesRecognizerTest {
             log.debug("Seems to be a car license plate: {}", seems2bCarLicensePlate);
         }
 
+    }
+
+    @Test
+    public void allowedCharactersTest() {
+        String alphabit = "";
+        for (char character = '0'; character <= 'z'; alphabit += character++);
+        log.info("Alphabit: {}", alphabit);
     }
 }
