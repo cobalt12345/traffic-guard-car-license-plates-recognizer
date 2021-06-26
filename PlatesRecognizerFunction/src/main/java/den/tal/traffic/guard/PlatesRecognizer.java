@@ -38,9 +38,9 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
     private Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private AmazonRekognition rekognitionClient;
     private AmazonS3 s3Client = AmazonS3ClientBuilder.defaultClient();
-    private final String carLicensePlatePattern = "[a-zA-z]{1}\\d{3,4}[a-zA-Z]{2}\\d{1,3}";
+    private final String carLicensePlatePattern = "[ABCEHKMOPTYXacekopyx]{1}\\d{3,4}[ABCEHKMOPTYXacekopyx]{2}\\d{1,3}";
     private Pattern pattern = Pattern.compile(carLicensePlatePattern);
-    private final String NOT_ALLOWED_CHARACTERS = "[^A-Za-z0-9]";
+    private final String NOT_ALLOWED_CHARACTERS = "[^ABCEHKMOPTYXacekopyx0-9]";
     private float scale = 20.0f;
     private String destinationBucket = "traffic-guard-cars-and-plates";
     private ImageFragmentExtractor imageFragmentExtractor = new ImageFragmentExtractor(scale);

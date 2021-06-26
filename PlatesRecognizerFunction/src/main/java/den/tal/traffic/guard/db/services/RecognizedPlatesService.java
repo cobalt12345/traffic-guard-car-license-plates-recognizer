@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class RecognizedPlatesService {
@@ -35,8 +36,8 @@ public class RecognizedPlatesService {
         log.debug("Check if plate number was already recognized: {}", recognizedPlate);
         Map<String, AttributeValue> attributeValues = new HashMap<>();
         attributeValues.put(":val1", new AttributeValue().withS(recognizedPlate.getCarLicensePlateNumber()));
-        attributeValues.put(":val2", new AttributeValue().withN(Long.toString(System.currentTimeMillis() -
-                nonRecognizablePeriod.toMillis())));
+        attributeValues.put(":val2", new AttributeValue().withN(Long.toString(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) -
+                nonRecognizablePeriod.toSeconds())));
 
         DynamoDBQueryExpression<RecognizedPlate> queryExpression = new DynamoDBQueryExpression<>();
         queryExpression.withKeyConditionExpression("car_license_plate_number = :val1 and parsed_timestamp >= :val2")
