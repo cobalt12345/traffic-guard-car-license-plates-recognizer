@@ -16,8 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -183,5 +187,31 @@ public class PlatesRecognizerTest {
         String alphabit = "";
         for (char character = '0'; character <= 'z'; alphabit += character++);
         log.info("Alphabit: {}", alphabit);
+    }
+
+    @Test
+    public void checkPrecision() throws Exception {
+        Long firstCaughtLong = Long.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()));
+        int firstCaughtInt = firstCaughtLong.intValue();
+        String firstCaughtString = new Date(TimeUnit.SECONDS.toMillis(firstCaughtInt)).toString();
+        //now we save int value to the DB
+        System.out.println("1 Long timestamp: " + firstCaughtLong);
+        System.out.println("1 int timestamp: " + firstCaughtInt);
+        System.out.println("1 String timestamp: " + firstCaughtString);
+        Thread.sleep(5000);
+        Long secondCaughtLong = Long.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()));
+        int secondCaughtInt = secondCaughtLong.intValue();
+        String secondCaughtString = new Date(TimeUnit.SECONDS.toMillis(secondCaughtInt)).toString();
+        System.out.println("2 Long timestamp: " + secondCaughtLong);
+        System.out.println("2 int timestamp: " + secondCaughtInt);
+        System.out.println("2 String timestamp: " + secondCaughtString);
+
+        Duration nonRecognizablePeriod =
+                Duration.of(Integer.parseInt(System.getenv().get("dontRecognizeAgainInMinutes")), ChronoUnit.MINUTES);
+
+        String skipSeconds = Long.toString(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) -
+                nonRecognizablePeriod.toSeconds());
+
+        System.out.printf("Skip last %s seconds%n", skipSeconds);
     }
 }

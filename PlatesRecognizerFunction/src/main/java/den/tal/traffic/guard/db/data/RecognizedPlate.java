@@ -73,8 +73,8 @@ public class RecognizedPlate {
      *
      * @param timestamp
      */
-    public void setTimestamp(long timestamp) {
-        this.timestamp = (int) TimeUnit.MILLISECONDS.toSeconds(timestamp);
-        timeStampHumanReadable = new Date(timestamp).toString();
+    public void setTimestamp(int timestamp) {
+        this.timestamp = timestamp;
+        timeStampHumanReadable = new Date(TimeUnit.SECONDS.toMillis(timestamp)).toString();
     }
 }

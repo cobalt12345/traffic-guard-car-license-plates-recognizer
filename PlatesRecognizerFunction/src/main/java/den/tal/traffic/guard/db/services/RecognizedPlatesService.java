@@ -41,8 +41,9 @@ public class RecognizedPlatesService {
 
         DynamoDBQueryExpression<RecognizedPlate> queryExpression = new DynamoDBQueryExpression<>();
         queryExpression.withKeyConditionExpression("car_license_plate_number = :val1 and parsed_timestamp >= :val2")
-                .withExpressionAttributeValues(attributeValues);
+                .withExpressionAttributeValues(attributeValues).withConsistentRead(true);
 
+        log.debug("Consistent read");
         List<RecognizedPlate> recognizedPlates = mapper.query(RecognizedPlate.class, queryExpression);
         log.debug("Car license plate number '{}' was already recognized {} times within last {} minutes.",
                 recognizedPlate.getCarLicensePlateNumber(), recognizedPlates.size(), nonRecognizablePeriod.toMinutes());

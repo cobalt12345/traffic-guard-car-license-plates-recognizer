@@ -30,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -88,7 +89,9 @@ public class PlatesRecognizer implements RequestHandler<S3Event, String> {
                 log.debug("Seems to be a car license plate number : {}", seems2bCarLicensePlateNumber);
                 RecognizedPlate recognizedPlate = new RecognizedPlate();
                 recognizedPlate.setCarLicensePlateNumber(seems2bCarLicensePlateNumber);
-                recognizedPlate.setTimestamp(System.currentTimeMillis());
+                recognizedPlate.setTimestamp(Long.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()))
+                        .intValue());
+
                 if (!recognizedPlatesService.carLicensePlateNumberWasRecognizedInPeriod(recognizedPlate)) {
                     getCarFromImage(bucket, key, recognizedPlate);
                     if (null != recognizedPlate.getObjectKeyInBucket()) {
